@@ -89,6 +89,14 @@ provision:
                   SystemdCgroup = true
     EOF
     systemctl restart containerd
+- mode: system
+  script: |
+    #!/bin/bash
+    set -eux -o pipefail
+    curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+    chmod 700 get_helm.sh
+    ./get_helm.sh
+
 # See <https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/>
 - mode: system
   script: |
@@ -119,8 +127,11 @@ provision:
     cgroupDriver: systemd
     EOF
 
-    kubeadm init --config kubeadm-config.yaml
     
+    kubeadm init --config kubeadm-config.yaml
+    helm repo add cilium https://helm.cilium.io/
+    helm install cilium cilium/cilium --version 1.13.1 --namespace kube-system
+
     # Control plane node isolation
     kubectl taint nodes --all node-role.kubernetes.io/control-plane-
     sed -e "s/${LIMA_CIDATA_SLIRP_IP_ADDRESS:-192.168.5.15}/127.0.0.1/" -i $KUBECONFIG
